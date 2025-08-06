@@ -10,7 +10,6 @@ This project implements a smart **AI-powered monitoring system for Azure Data Fa
 
 This makes your data pipelines more resilient and reduces manual troubleshooting.
 
----
 
 ## Features
 
@@ -20,7 +19,6 @@ This makes your data pipelines more resilient and reduces manual troubleshooting
 - Notification support via email
 - Modular architecture for easy customization.
 
----
 
 ## Prerequisites
 
@@ -30,7 +28,6 @@ This makes your data pipelines more resilient and reduces manual troubleshooting
 - Python 3.8 or newer.
 - (Optional) SMTP email account credentials for notifications.
 
----
 
 ## Simple Setup Instructions
 
@@ -90,8 +87,6 @@ This makes your data pipelines more resilient and reduces manual troubleshooting
 
 6. **Stop the system anytime** by pressing `Ctrl+C`.
 
----
-
 ## How It Works
 
 - **Monitoring Agent** checks pipeline runs regularly.
@@ -100,5 +95,4 @@ This makes your data pipelines more resilient and reduces manual troubleshooting
 - **Trigger Rerun Agent** calls Azure APIs to rerun pipelines automatically.
 - **Notifier Agent** alerts operations by printing or email.
 
----
 
