@@ -1,75 +1,104 @@
-This project builds a smart **monitoring system for Azure Data Factory (ADF) pipelines** using OpenAI's GPT-4 AI:
+# ADF AI Pipeline Monitor
 
-- It regularly checks your data pipelines to see if they fail.
-- When a failure happens, it sends details about the failure to GPT-4.
-- GPT-4 analyzes the error message and decides if the pipeline should:
-  - Fully rerun,
-  - Partially rerun only the failed step,
-  - Or not rerun at all.
-- Based on AI’s decision, the system automatically triggers the required pipeline rerun via Azure API.
-- It sends an email or alert with all this information to the operations team.
+This project implements a smart **AI-powered monitoring system for Azure Data Factory (ADF) pipelines** using OpenAI’s GPT-4. It helps you:
 
-This turns your pipelines into a self-healing system — reducing downtime and manual work by automating failure detection and recovery with AI assistance.
+- Automatically detect when ADF pipelines fail.
+- Send failure details to GPT-4 for intelligent analysis.
+- Let GPT-4 decide whether to rerun the full pipeline, rerun just the failed part, or skip rerun.
+- Automatically trigger pipeline reruns based on AI decisions.
+- Notify your team via email or console alerts about failures and actions taken.
 
-# Simple Setup Instructions
+This makes your data pipelines more resilient and reduces manual troubleshooting.
 
-1. **Prerequisites:**
-   - Have an Azure subscription with Azure Data Factory set up.
-   - Create an Azure Service Principal with permission to read and run pipelines.
-   - Access to Azure OpenAI Service with GPT-4 enabled.
-   - Install Python 3.8 or higher on your machine.
+---
 
-2. **Download the code:**
+## Features
 
-   Get the project folder onto your computer (you can copy it from the provided files or clone if available).
+- Continuous, near-real-time failure monitoring of ADF pipelines.
+- AI-driven decision making with GPT-4 for intelligent recovery.
+- Automated pipeline reruns (full or partial).
+- Notification support via email
+- Modular architecture for easy customization.
 
-3. **Open in VS Code:**
+---
 
-   - Open Visual Studio Code.
-   - Choose `File > Open Folder` and select the project folder (`adf_ai_pipeline_monitor`).
+## Prerequisites
 
-4. **Set up Python environment:**
+- Azure subscription with Azure Data Factory pipelines.
+- Azure Service Principal with rights to read/run pipelines.
+- Access to Azure OpenAI service with GPT-4 enabled.
+- Python 3.8 or newer.
+- (Optional) SMTP email account credentials for notifications.
 
-   - Open a terminal in VS Code (`Terminal > New Terminal`).
-   - Create and activate a virtual environment:
+---
 
-     ```bash
-     python -m venv venv
-     # On Windows
-     venv\Scripts\activate
-     # On macOS/Linux
-     source venv/bin/activate
-     ```
+## Simple Setup Instructions
 
-5. **Install required packages:**
+1. **Clone the repository:**
 
-   Run:
+    ```
+    git clone https://github.com/swarnavarsha1/adf_pipeline_monitor_ai_agent.git
+    cd adf_pipeline_monitor_ai_agent
+    ```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+2. **Create and activate a Python virtual environment:**
 
-6. **Configure credentials:**
+    ```
+    python -m venv venv
 
-   Open `config.py` and fill in your Azure and OpenAI credentials:
+    # Windows
+    venv\Scripts\activate
 
-   ```python
-   ADF_SUBSCRIPTION_ID = "your-azure-subscription-id"
-   ADF_RESOURCE_GROUP = "your-azure-resource-group"
-   ADF_FACTORY_NAME = "your-data-factory-name"
-   ADF_TENANT_ID = "your-azure-tenant-id"
-   ADF_CLIENT_ID = "your-service-principal-client-id"
-   ADF_CLIENT_SECRET = "your-service-principal-client-secret"
-   OPENAI_API_KEY = "your-openai-api-key"
-   NOTIFICATION_EMAIL = "your-team-email@example.com"
-   ```
+    # macOS/Linux
+    source venv/bin/activate
+    ```
 
-7. **Run the monitoring system:**
+3. **Install dependencies:**
 
-   In the terminal, run:
+    ```
+    pip install -r requirements.txt
+    ```
 
-   ```bash
-   python main.py
-   ```
+4. **Create a `.env` file** in the project root with your configuration:
 
-   The system will start polling your ADF pipelines every 5 minutes, analyze failures with AI, rerun pipelines as needed, and notify you by printing alerts (extendable to email).
+    ```
+    ADF_SUBSCRIPTION_ID=your-azure-subscription-id
+    ADF_RESOURCE_GROUP=your-azure-resource-group
+    ADF_FACTORY_NAME=your-adf-factory-name
+    ADF_TENANT_ID=your-azure-tenant-id
+    ADF_CLIENT_ID=your-service-principal-client-id
+    ADF_CLIENT_SECRET=your-service-principal-client-secret
+    OPENAI_API_KEY=your-openai-api-key
+    NOTIFICATION_EMAIL=your-team-email@example.com
+
+    # Optional SMTP settings (for real email notifications)
+    SMTP_SERVER=smtp.gmail.com
+    SMTP_PORT=587
+    SMTP_USERNAME=your_email@gmail.com
+    SMTP_PASSWORD=your_app_password
+    ```
+
+5. **Run the monitoring system:**
+
+    ```
+    python main.py
+    ```
+
+    - The system polls your ADF pipelines every 2 minutes.
+    - If failures occur, AI analyzes and decides rerun actions.
+    - Notifications print to console or send emails (if SMTP configured).
+
+6. **Stop the system anytime** by pressing `Ctrl+C`.
+
+---
+
+## How It Works
+
+- **Monitoring Agent** checks pipeline runs regularly.
+- **Decision Logic Agent** sends failure info to GPT-4.
+- GPT-4 suggests rerun full, partial, or no rerun.
+- **Trigger Rerun Agent** calls Azure APIs to rerun pipelines automatically.
+- **Notifier Agent** alerts operations by printing or email.
+
+---
+
