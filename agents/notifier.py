@@ -12,4 +12,11 @@ class Notifier:
         print(f"SUBJECT: {subject}")
         print(message)
         print("--- END NOTIFICATION ---\n")
-        # Add email or real notification sending here if needed
+
+    def notify_escalation(self, subject, message):
+        print(f"\n--- ESCALATION ALERT ---")
+        print(f"TO: {NOTIFICATION_EMAIL}")
+        print(f"SUBJECT: {subject}")
+        print(message)
+        print("--- END ESCALATION ALERT ---\n")
+        # TODO: Implement real email sending for escalation alert.
