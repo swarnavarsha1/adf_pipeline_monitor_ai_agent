@@ -1,12 +1,10 @@
+# agents/trigger_rerun_agent.py
 class TriggerRerunAgent:
     def __init__(self, adf_client):
         self.adf_client = adf_client
 
-    def rerun(self, pipeline_name, activity=None):
-        print(f"[TriggerRerunAgent] Requesting rerun for '{pipeline_name}', activity: {activity}")
-        outcome = self.adf_client.rerun_pipeline(pipeline_name, start_activity=activity)
-        if outcome:
-            print(f"[TriggerRerunAgent] Rerun triggered! Response: {outcome}")
-        else:
-            print(f"[TriggerRerunAgent] Rerun failed or could not be triggered.")
+    def rerun(self, run_id):
+        print(f"[TriggerRerunAgent] Triggering rerun for original runId={run_id}")
+        outcome = self.adf_client.rerun_pipeline_by_run_id(run_id)
+        print(f"[TriggerRerunAgent] Rerun started: {outcome}")
         return outcome

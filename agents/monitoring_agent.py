@@ -1,51 +1,85 @@
+# agents/monitoring_agent.py
 import time
-from retry_manager import RetryManager
+import datetime
+from config import PIPELINES_TO_MONITOR
+from db_manager import DBManager
 
 class MonitoringAgent:
     def __init__(self, adf_client, decision_agent):
         self.adf_client = adf_client
         self.decision_agent = decision_agent
-        self.retry_manager = RetryManager(max_retries=2)
+        self.db = DBManager()
 
     def poll(self):
-        print("[MonitoringAgent] Starting monitoring loop. Press Ctrl+C to exit.")
+        print("[MonitoringAgent] Starting monitoring loop.")
         while True:
-            print("[MonitoringAgent] Polling for failed pipelines...")
-            
-            failed_pipelines = self.adf_client.get_failed_pipelines()
-            successful_pipelines = self.adf_client.get_successful_pipelines()
+            failed_runs = [r for r in self.adf_client.get_failed_pipelines()
+                           if r['pipelineName'] in PIPELINES_TO_MONITOR]
+            succeeded_runs = [r for r in self.adf_client.get_successful_pipelines()
+                              if r['pipelineName'] in PIPELINES_TO_MONITOR]
 
-            # Collect pipeline names with recent successes
-            successful_pipeline_names = set(run['pipelineName'] for run in successful_pipelines)
+            # Success resets retry record
+            for run in succeeded_runs:
+                self.db.delete_run(run['pipelineName'], run['runId'])
+                print(f"[MonitoringAgent] SUCCESS: {run['pipelineName']} run {run['runId']} -> Retry reset.")
 
-            for run in failed_pipelines:
-                pipeline_name = run['pipelineName']
-                run_id = run['runId']
+            for run in failed_runs:
+                p_name, orig_run_id = run['pipelineName'], run['runId']
+                self.db.insert_run(p_name, orig_run_id, retry_count=2)
+                info = self.db.get_run_info(p_name, orig_run_id)
+                retries_left, last_attempt_id, status = info['retry_count'], info['last_attempt_run_id'], info['status']
 
-                # Skip retry if pipeline has succeeded recently
-                if pipeline_name in successful_pipeline_names:
-                    if (pipeline_name, run_id) in self.retry_manager.retry_counts or \
-                       (pipeline_name, run_id) in self.retry_manager.blocked_runs:
-                        print(f"[MonitoringAgent] Resetting retries for pipeline '{pipeline_name}', run '{run_id}' due to success.")
-                        self.retry_manager.reset_retry(pipeline_name, run_id)
-                    print(f"[MonitoringAgent] Skipping retry for succeeded pipeline '{pipeline_name}', run '{run_id}'.")
+                # If retry in progress, check its status
+                if status == "running" and last_attempt_id:
+                    attempt_status = self.adf_client.get_pipeline_run_status(last_attempt_id)['status']
+                    print(f"[MonitoringAgent] Last retry run {last_attempt_id} is {attempt_status}")
+                    if attempt_status.lower() == "inprogress":
+                        continue  # Wait until finished
+                    elif attempt_status.lower() == "succeeded":
+                        self.db.delete_run(p_name, orig_run_id)
+                        print(f"[MonitoringAgent] Retry succeeded for {p_name} ({orig_run_id}). Reset.")
+                        continue
+                    elif attempt_status.lower() == "failed":
+                        retries_left -= 1
+                        self.db.update_retry(p_name, orig_run_id, retry_count=retries_left, status="pending")
+                        print(f"[MonitoringAgent] Retry failed for {p_name} ({orig_run_id}). Retries left={retries_left}")
+                        continue
+
+                # No retries left
+                if retries_left < 1:
+                    self.decision_agent.notify_max_retries_exceeded(run, orig_run_id)
                     continue
 
-                # Check retry threshold
-                if not self.retry_manager.can_retry(pipeline_name, run_id):
-                    print(f"[MonitoringAgent] Max retries exceeded for pipeline '{pipeline_name}', run '{run_id}'. Sending escalation alert.")
-                    self.decision_agent.notify_max_retries_exceeded(run, run_id)
+                # Optional manual prompt
+                confirm = input(f"Run {orig_run_id} of {p_name} failed. Retry? (y/n): ").strip().lower()
+                if confirm != 'y':
+                    self.db.update_retry(p_name, orig_run_id, retry_count=0)
+                    self.decision_agent.notify_max_retries_exceeded(run, orig_run_id)
                     continue
 
-                print(f"[MonitoringAgent] Found failed pipeline: {pipeline_name} (Run ID: {run_id})")
-                
-                self.decision_agent.evaluate_failure(
-                    pipeline_name=pipeline_name,
+                # Run AI evaluation before retry
+                ai_res = self.decision_agent.evaluate_failure(
+                    pipeline_name=p_name,
                     activity=None,
-                    error_message=run.get('message', 'No error message.'),
-                    run_id=run_id,
-                    retry_manager=self.retry_manager
+                    error_message=run.get('message', ''),
+                    run_id=orig_run_id
                 )
 
-            print("[MonitoringAgent] Polling complete. Sleeping for 5 minutes...\n")
-            time.sleep(300)  # 5 minutes
+                if ai_res['action'] == "none" or 'not recoverable' in ai_res['rationale'].lower():
+                    self.db.update_retry(p_name, orig_run_id, retry_count=0)
+                    self.decision_agent.notify_max_retries_exceeded(run, orig_run_id)
+                    continue
+
+                # Trigger retry
+                outcome = self.decision_agent.trigger_rerun_agent.rerun(orig_run_id)
+                new_retry_id = outcome.get('runId')
+                self.db.update_retry(p_name, orig_run_id,
+                                     last_attempt_run_id=new_retry_id,
+                                     status="running")
+                print(f"[MonitoringAgent] Triggered retry #{3-retries_left} for {p_name} ({orig_run_id}) as {new_retry_id}")
+
+            sleep_seconds = 300
+            wake_time = datetime.datetime.now() + datetime.timedelta(seconds=sleep_seconds)
+            print(f"[MonitoringAgent] Polling complete. Sleeping for 5 minutes. "
+                f"Next check at {wake_time.strftime('%Y-%m-%d %H:%M:%S')}.\n")
+            time.sleep(sleep_seconds)

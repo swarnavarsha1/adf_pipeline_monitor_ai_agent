@@ -12,4 +12,9 @@ ADF_CLIENT_ID = os.getenv('ADF_CLIENT_ID')
 ADF_CLIENT_SECRET = os.getenv('ADF_CLIENT_SECRET')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 NOTIFICATION_EMAIL = os.getenv('NOTIFICATION_EMAIL')
+PIPELINES_TO_MONITOR = [
+    #"pipeline1",
+    "pipeline2"
+    ]
+
 
