@@ -16,6 +16,7 @@ This makes your data pipelines more resilient and reduces manual troubleshooting
 - Continuous, near-real-time failure monitoring of ADF pipelines.
 - AI-driven decision making with GPT-4 for intelligent recovery.
 - Automated pipeline reruns (full or partial).
+- RAG integration — retrieves relevant solutions from your own PDF knowledge base and includes them in notifications
 - Notification support via email
 - Modular architecture for easy customization.
 
@@ -95,4 +96,60 @@ This makes your data pipelines more resilient and reduces manual troubleshooting
 - **Trigger Rerun Agent** calls Azure APIs to rerun pipelines automatically.
 - **Notifier Agent** alerts operations by printing or email.
 
+## Retrieval‑Augmented Generation (RAG) Integration
 
+This monitoring agent now uses a RAG system to suggest fixes for pipeline failures from a PDF knowledge base.
+
+How it works:
+
+1. Put your reference PDFs (with error messages and solutions) into the knowledge_pdfs/ folder.
+
+2. Build the search index (run from project root):
+
+```
+python -m rag.build_rag_index
+```
+
+This processes the PDFs into a FAISS vector store in rag/faiss_index/.
+
+3. When a pipeline fails, the AI (GPT) diagnoses the cause and sends that to the RAG retriever.
+
+4. The retriever finds similar solutions in your PDFs and includes them in the same notification with the AI rationale.
+
+5. Duplicate notifications for the same run ID are suppressed — you only get one combined email per failure unless a new run fails.
+
+        ┌──────────────────────────────────────────────────┐
+        │   1. Monitor Pipelines via ADF API                │
+        │   (monitoring_agent.py)                           │
+        └──────────────────────────────────────────────────┘
+                          │
+                          ▼
+        ┌──────────────────────────────────────────────────┐
+        │  2. Failure Detected                              │
+        │     - pipeline_name, run_id, error_message        │
+        └──────────────────────────────────────────────────┘
+                          │
+                          ▼
+        ┌──────────────────────────────────────────────────┐
+        │  3. AI Analysis (GPT)                             │
+        │     - Suggest retry: full / partial / none        │
+        │     - Give rationale                              │
+        └──────────────────────────────────────────────────┘
+                          │
+                          ▼
+        ┌──────────────────────────────────────────────────┐
+        │  4. RAG Solution Lookup                           │
+        │     - Take AI rationale                           │
+        │     - Search in FAISS vector store (rag/)         │
+        │     - Find relevant chunks from knowledge_pdfs/   │
+        │     - Ask GPT to summarize actionable fix         │
+        └──────────────────────────────────────────────────┘
+                          │
+                          ▼
+        ┌──────────────────────────────────────────────────┐
+        │  5. Single Combined Notification                  │
+        │     - Pipeline name & run ID                      │
+        │     - AI decision & rationale                     │
+        │     - Suggested KB solution (RAG)                 │
+        │     - Escalation note if retry won't help         │
+        └──────────────────────────────────────────────────┘
