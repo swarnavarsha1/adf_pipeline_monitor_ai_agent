@@ -131,8 +131,8 @@ flowchart TD
     C --> D[RAG Solution Lookup<br/>-  Use AI rationale as search query<br/>-  Search FAISS vector store from PDFs<br/>-  Find matching KB chunks<br/>-  Ask GPT to summarize solution]:::rag
     D --> E[Single Combined Notification<br/>-  Pipeline name & run ID<br/>-  AI decision & rationale<br/>-  Suggested KB solution<br/>-  Escalation note if retry won't help]:::notif
 
-    classDef step fill:#CDE8FF,stroke:#0366d6,stroke-width:2px,color:#000,font-weight:bold
-    classDef ai fill:#FFD6D6,stroke:#d73a49,stroke-width:2px,color:#000,font-weight:bold
-    classDef rag fill:#FFF3CD,stroke:#e36209,stroke-width:2px,color:#000,font-weight:bold
-    classDef notif fill:#D4F8D4,stroke:#28a745,stroke-width:2px,color:#000,font-weight:bold
+    classDef step fill:#CDE8FF,stroke:#0366d6,stroke-width:4px,color:#000,font-weight:bold
+    classDef ai fill:#FFD6D6,stroke:#d73a49,stroke-width:4px,color:#000,font-weight:bold
+    classDef rag fill:#FFF3CD,stroke:#e36209,stroke-width:4px,color:#000,font-weight:bold
+    classDef notif fill:#D4F8D4,stroke:#28a745,stroke-width:4px,color:#000,font-weight:bold
 ```
