@@ -88,13 +88,7 @@ This makes your data pipelines more resilient and reduces manual troubleshooting
 
 6. **Stop the system anytime** by pressing `Ctrl+C`.
 
-## How It Works
-
-- **Monitoring Agent** checks pipeline runs regularly.
-- **Decision Logic Agent** sends failure info to GPT-4.
-- GPT-4 suggests rerun full, partial, or no rerun.
-- **Trigger Rerun Agent** calls Azure APIs to rerun pipelines automatically.
-- **Notifier Agent** alerts operations by printing or email.
+- Repeat polling loop after configured sleep time.
 
 ## Retrieval‑Augmented Generation (RAG) Integration
 
@@ -118,38 +112,27 @@ This processes the PDFs into a FAISS vector store in rag/faiss_index/.
 
 5. Duplicate notifications for the same run ID are suppressed — you only get one combined email per failure unless a new run fails.
 
-        ┌──────────────────────────────────────────────────┐
-        │   1. Monitor Pipelines via ADF API                │
-        │   (monitoring_agent.py)                           │
-        └──────────────────────────────────────────────────┘
-                          │
-                          ▼
-        ┌──────────────────────────────────────────────────┐
-        │  2. Failure Detected                              │
-        │     - pipeline_name, run_id, error_message        │
-        └──────────────────────────────────────────────────┘
-                          │
-                          ▼
-        ┌──────────────────────────────────────────────────┐
-        │  3. AI Analysis (GPT)                             │
-        │     - Suggest retry: full / partial / none        │
-        │     - Give rationale                              │
-        └──────────────────────────────────────────────────┘
-                          │
-                          ▼
-        ┌──────────────────────────────────────────────────┐
-        │  4. RAG Solution Lookup                           │
-        │     - Take AI rationale                           │
-        │     - Search in FAISS vector store (rag/)         │
-        │     - Find relevant chunks from knowledge_pdfs/   │
-        │     - Ask GPT to summarize actionable fix         │
-        └──────────────────────────────────────────────────┘
-                          │
-                          ▼
-        ┌──────────────────────────────────────────────────┐
-        │  5. Single Combined Notification                  │
-        │     - Pipeline name & run ID                      │
-        │     - AI decision & rationale                     │
-        │     - Suggested KB solution (RAG)                 │
-        │     - Escalation note if retry won't help         │
-        └──────────────────────────────────────────────────┘
+## How It Works
+
+- Monitor ADF pipelines at fixed intervals using the Azure Data Factory REST API.
+- Detect failed and successful runs and update retry tracking in a local SQLite database.
+- For each new failure, send details to GPT to decide retry action (full, partial, or none) and explain why.
+- If retry advised → trigger rerun automatically via ADF API.
+- Pass GPT’s rationale to the RAG retriever to search your PDF knowledge base for matching solutions.
+- Combine AI decision + RAG solution (and escalation note if retry is useless) into one notification.
+- Send the notification to configured recipients (currently printed, email integration possible).
+- Avoid duplicate notifications for the same run ID using DB flags, only re‑alert if a new failure/run occurs.
+
+
+``` mermaid
+flowchart TD
+    A[Monitor Pipelines via ADF API]:::step --> B[Failure Detected<br>pipeline_name, run_id, error_message]:::step
+    B --> C[AI Analysis - GPT<br/>-  Suggest retry: full / partial / none<br/>-  Provide rationale]:::ai
+    C --> D[RAG Solution Lookup<br/>-  Use AI rationale as search query<br/>-  Search FAISS vector store from PDFs<br/>-  Find matching KB chunks<br/>-  Ask GPT to summarize solution]:::rag
+    D --> E[Single Combined Notification<br/>-  Pipeline name & run ID<br/>-  AI decision & rationale<br/>-  Suggested KB solution<br/>-  Escalation note if retry won't help]:::notif
+
+    classDef step fill:#CDE8FF,stroke:#0366d6,stroke-width:2px,color:#000,font-weight:bold
+    classDef ai fill:#FFD6D6,stroke:#d73a49,stroke-width:2px,color:#000,font-weight:bold
+    classDef rag fill:#FFF3CD,stroke:#e36209,stroke-width:2px,color:#000,font-weight:bold
+    classDef notif fill:#D4F8D4,stroke:#28a745,stroke-width:2px,color:#000,font-weight:bold
+```
