@@ -97,7 +97,6 @@ This monitoring agent now uses a RAG system to suggest fixes for pipeline failur
 How it works:
 
 1. Put your reference PDFs (with error messages and solutions) into the knowledge_pdfs/ folder.
-
 2. Build the search index (run from project root):
 
 ```
@@ -107,9 +106,7 @@ python -m rag.build_rag_index
 This processes the PDFs into a FAISS vector store in rag/faiss_index/.
 
 3. When a pipeline fails, the AI (GPT) diagnoses the cause and sends that to the RAG retriever.
-
 4. The retriever finds similar solutions in your PDFs and includes them in the same notification with the AI rationale.
-
 5. Duplicate notifications for the same run ID are suppressed — you only get one combined email per failure unless a new run fails.
 
 ## How It Works
@@ -122,6 +119,7 @@ This processes the PDFs into a FAISS vector store in rag/faiss_index/.
 - Combine AI decision + RAG solution (and escalation note if retry is useless) into one notification.
 - Send the notification to configured recipients (currently printed, email integration possible).
 - Avoid duplicate notifications for the same run ID using DB flags, only re‑alert if a new failure/run occurs.
+
 
         ┌──────────────────────────────────────────────────┐
         │   1. Monitor Pipelines via ADF API               │
