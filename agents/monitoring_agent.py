@@ -88,14 +88,25 @@ class MonitoringAgent:
 
                 # --- Case E: Trigger actual retry ---
                 outcome = self.decision_agent.trigger_rerun_agent.rerun(orig_run_id)
+
+                if not outcome or 'runId' not in outcome:
+                    print(f"[MonitoringAgent] ERROR: Rerun for {p_name} ({orig_run_id}) failed or returned invalid response: {outcome}")
+                    # Mark as needing escalation if we cannot rerun
+                    self.db.update_retry(p_name, orig_run_id, retry_count=0)
+                    self.decision_agent.notify_max_retries_exceeded(run, orig_run_id)
+                    continue
+
                 new_retry_id = outcome.get('runId')
+
                 self.db.update_retry(
                     p_name,
                     orig_run_id,
                     last_attempt_run_id=new_retry_id,
                     status="running"
                 )
+
                 print(f"[MonitoringAgent] Triggered retry #{3 - retries_left} for {p_name} ({orig_run_id}) as {new_retry_id}")
+
 
             # --- 4. Sleep until next poll ---
             sleep_seconds = 300  # 5 minutes
